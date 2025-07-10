@@ -2,11 +2,12 @@
 #include <iostream>
 #include <random>
 #include <cstdint>
+#include <fstream> 
+#include <iomanip>
 
 #define INITIAL_SIZE 4 // Escolhi o valor como uma potência de 2 não muito grande, não sei bem se existe alguma regra para o tamanho inicial da tabela
 #define P 4397 // Número primo aleatório para utilizar na função de hash
-//#define M 4294967296ULL // Universo de chaves = 2^32
-#define M UINT64_C(4294967296)
+#define M UINT64_C(4294967296) // Universo de chaves = 2^32
 #define MSQRT 65536 // Raiz quadrada de M
 
 using namespace std;
@@ -231,7 +232,7 @@ class vEBTree {
         long long int findNext(int32_t x);
         long long int findPrevious(int32_t x);
         int32_t remove(int32_t x);
-        void print();
+        void print(std::ofstream& Output);
         void initializeResumo(vEBTree* res);
 };
 
@@ -410,13 +411,15 @@ int32_t vEBTree::remove(int32_t x) {
     }
 }
 
-void vEBTree::print() {
+void vEBTree::print(std::ofstream& Output) {
     if (this->min == INT32_MAX && this->max == INT32_MIN) {
         std::cout << "Arvore vazia" << endl;
+        Output << "Arvore vazia" << endl;
         return;
     }
 
     std::cout << "Min: " << this->min;
+    Output << "Min: " << this->min;
 
     if (this->resumo != NULL) {
         for (int i = 0; i < MSQRT; i++) {
@@ -427,10 +430,12 @@ void vEBTree::print() {
                 if (ithCluster->min != INT32_MAX) {
                     int32_t curr = ithCluster->min;
                     std::cout << ", C[" << i << "]: " << curr;
+                    Output << ", C[" << i << "]: " << curr;
 
                     int next = ithCluster->findNext(curr);
                     while (next != INT32_MAX) {
                         std::cout << ", " << next;
+                        Output << ", " << next;
                         next = ithCluster->findNext(next);
                     }
                 }
@@ -439,14 +444,15 @@ void vEBTree::print() {
     }
 
     std::cout << endl;
+    //Output << endl;
 }
 
-int main() {
+int main(int argc, char** argv) {
 
     //HashTable table = HashTable();
     vEBTree tree = vEBTree();
 
-    int32_t k=0;
+    /*int32_t k=0;
     unsigned int c;
 
     while (k != -1 && c != -1) {
@@ -499,7 +505,82 @@ int main() {
         }
     }
 
-    tree.print();
+    tree.print();*/
+    if (argc <= 0) {
+        cout << "Nenhum argumento passado. Por favor tente novamente passe o arquivo de txt como entrada." << endl;
+        return 1;
+    }
+
+    std::string filename = argv[1];
+    std::string line;
+
+    ofstream Output("saida.txt");
+
+    ifstream MyFile(filename);
+    if (!MyFile.is_open()) {
+        cout << "Não foi possivel abrir o arquivo indicado." << endl;
+        return 1;
+    }
+
+    while (getline(MyFile, line)) {
+        std::stringstream ss(line);
+        std::string command;
+        int n;
+        int v;
+
+        if (ss >> command) {
+            if (command == "INC") {
+                // INSERIR
+                cout << line << endl;
+                Output << line << endl;
+                ss >> n;
+                //cout << "inserir " << n << endl;
+                tree.insert(n);
+            } else if (command == "REM") {
+                // REMOVER
+                cout << line << endl;
+                Output << line << endl;
+                ss >> n;
+                //cout << "remover " << n << endl;
+                tree.remove(n);
+            } else if (command == "SUC") {
+                // SUCESSOR
+                Output << line << endl;
+                cout << line << endl;
+
+                ss >> n;
+
+                int32_t res = tree.findNext(n);
+                std::cout << res << endl;
+                Output << res << endl;
+            } else if (command == "PRE") {
+                // SUCESSOR
+                Output << line << endl;
+                cout << line << endl;
+
+                ss >> n;
+                
+                int32_t res = tree.findPrevious(n);
+                std::cout << res << endl;
+                Output << res << endl;
+            } else if (command == "IMP") {
+                // IMPRIMIR
+                //cout << "imprimir " << n << endl;
+                Output << line << endl;
+                cout << line << endl;
+                
+                tree.print(Output);
+                //rbtree.print("", rbtree.root[k], k, false, true);
+                Output << endl;
+                cout << endl;
+            }
+        }
+    }
+
+    MyFile.close();
+    Output.close();
+    
+    return 0;
 
     return 0;
 }
