@@ -1,10 +1,12 @@
 #include <vector>
 #include <iostream>
 #include <random>
+#include <cstdint>
 
 #define INITIAL_SIZE 4 // Escolhi o valor como uma potência de 2 não muito grande, não sei bem se existe alguma regra para o tamanho inicial da tabela
 #define P 4397 // Número primo aleatório para utilizar na função de hash
-#define M 4294967296 // Universo de chaves = 2^32
+//#define M 4294967296ULL // Universo de chaves = 2^32
+#define M UINT64_C(4294967296)
 #define MSQRT 65536 // Raiz quadrada de M
 
 using namespace std;
@@ -299,7 +301,7 @@ long long int vEBTree::findNext(int32_t x) {
     }
 
     if (x >= this->max) {
-        return M;
+        return INT32_MAX;
     }
 
     int i = floor( ((float) x) / MSQRT );
@@ -409,8 +411,34 @@ int32_t vEBTree::remove(int32_t x) {
 }
 
 void vEBTree::print() {
-    std::cout << this->min << ", ";
-    this->clusters.printTable();
+    if (this->min == INT32_MAX && this->max == INT32_MIN) {
+        std::cout << "Arvore vazia" << endl;
+        return;
+    }
+
+    std::cout << "Min: " << this->min;
+
+    if (this->resumo != NULL) {
+        for (int i = 0; i < MSQRT; i++) {
+            std::pair<int, Node*> ithEntry = this->clusters.findKey(i);
+            if (ithEntry.first != -1 && ithEntry.second->pointer != NULL) {
+                vEBTree* ithCluster = ithEntry.second->pointer;
+
+                if (ithCluster->min != INT32_MAX) {
+                    int32_t curr = ithCluster->min;
+                    std::cout << ", C[" << i << "]: " << curr;
+
+                    int next = ithCluster->findNext(curr);
+                    while (next != INT32_MAX) {
+                        std::cout << ", " << next;
+                        next = ithCluster->findNext(next);
+                    }
+                }
+            }
+        }
+    }
+
+    std::cout << endl;
 }
 
 int main() {
