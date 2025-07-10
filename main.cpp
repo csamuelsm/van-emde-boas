@@ -225,6 +225,8 @@ class vEBTree {
 
         int32_t insert(int32_t x);
         long int findNext(int32_t x);
+        long int findPrevious(int32_t x);
+        void print();
 };
 
 int32_t vEBTree::insert(int32_t x) {
@@ -299,6 +301,42 @@ long int vEBTree::findNext(int32_t x) {
     return (MSQRT * j) + this->clusters.findKey(j).second->pointer->min;
 }
 
+long int vEBTree::findPrevious(int32_t x) {
+    if (x > this->max) {
+         return this->max;
+    }
+
+    if (x <= this->min) {
+        return INT32_MIN;
+    }
+
+    int i = floor( ((float) x) / MSQRT );
+    int lo = x % MSQRT;
+
+    vEBTree* ithCluster = this->clusters.findKey(i).second->pointer;
+
+    if (lo > ithCluster->min) {
+        return (MSQRT * i) + ithCluster->findPrevious(lo);
+    }
+
+    int32_t j = this->resumo->findPrevious(i);
+
+    if (j == INT32_MIN) {
+        if (this->min < x) {
+            return this->min;
+        } else {
+            return INT32_MIN;
+        }
+    } else {
+        return (MSQRT * j) + this->clusters.findKey(j).second->pointer->max;
+    }
+}
+
+void vEBTree::print() {
+    std::cout << this->min << ", ";
+    // Continuar o print
+}
+
 int main() {
 
     //HashTable table = HashTable();
@@ -309,7 +347,7 @@ int main() {
 
     while (k != -1 && c != -1) {
 
-        std::cout << "Digite 1 para inserir e 2 para achar o sucessor: ";
+        std::cout << "MENU" << endl <<"1 - inserir" << endl << "2 - sucessor" << endl << "3 - predecessor" << endl;
         std::cin >> c;
 
         switch (c)
@@ -321,9 +359,6 @@ int main() {
                 std::cout << endl;
 
                 tree.insert(k);
-
-                //int idx = table.insertKey(k);
-                //table.printTable();
             }
             break;
         case 2:
@@ -334,15 +369,23 @@ int main() {
 
                 int32_t res = tree.findNext(k);
                 std::cout << "Sucessor de " << k << " eh: " << res << endl << endl;
-
-                //int idx = table.deleteKey(k);
-                //table.printTable();
             }
             break;
+        case 3:
+            {
+                std::cout << "Digite um valor para encontrar o predecessor na arvore: ";
+                std::cin >> k;
+                std::cout << endl;
+
+                int32_t res = tree.findPrevious(k);
+                std::cout << "Predecessor de " << k << " eh: " << res << endl << endl;
+            }
         default:
             break;
         }
     }
+
+    tree.print();
 
     return 0;
 }
