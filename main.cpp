@@ -2,7 +2,7 @@
 #include <iostream>
 #include <random>
 
-#define INITIAL_SIZE 16 // Escolhi o valor como uma potência de 2 não muito grande, não sei bem se existe alguma regra para o tamanho inicial da tabela
+#define INITIAL_SIZE 4 // Escolhi o valor como uma potência de 2 não muito grande, não sei bem se existe alguma regra para o tamanho inicial da tabela
 #define P 4397 // Número primo aleatório para utilizar na função de hash
 #define M 4294967296 // Universo de chaves = 2^32
 #define MSQRT 65536 // Raiz quadrada de M
@@ -76,7 +76,7 @@ class HashTable {
 
         void tableDoubling();
         void tableHalving();
-        int32_t insertKey(int32_t k);
+        int32_t insertKey(int32_t k, vEBTree* tree);
         std::pair<int, Node*> findKey(int32_t k);
         int32_t deleteKey(int32_t k);
         int hash(int32_t k);
@@ -95,7 +95,7 @@ void HashTable::tableDoubling() {
     // reinserindo as chaves na nova posição    
     for (int32_t i = 0; i < cp.size(); i++) {
         if (cp[i].key != -1 && cp[i].deleted != true) {
-            this->insertKey(cp[i].key);
+            this->insertKey(cp[i].key, cp[i].pointer);
         }
     }
 }
@@ -112,7 +112,7 @@ void HashTable::tableHalving() {
     // reinserindo as chaves na nova posição    
     for (int32_t i = 0; i < cp.size(); i++) {
         if (cp[i].key != -1 && cp[i].deleted != true) {
-            this->insertKey(cp[i].key);
+            this->insertKey(cp[i].key, cp[i].pointer);
         }
     }
 }
@@ -126,10 +126,11 @@ int HashTable::hash(int32_t k) {
     return (sum % P) % this->size;
 }
 
-int32_t HashTable::insertKey(int32_t k) {
+int32_t HashTable::insertKey(int32_t k, vEBTree* tree) {
 
     Node node = Node();
     node.setValue(k);
+    node.initializePointer(tree);
 
     int32_t idx = this->hash(k);
     //cout << "Inserindo na posição: " << idx << endl;
@@ -211,8 +212,8 @@ void HashTable::printTable() {
 
 class vEBTree {
     public:
-        int32_t min;
-        int32_t max;
+        long long int min;
+        long long int max;
 
         HashTable clusters;
         vEBTree* resumo;
@@ -221,13 +222,21 @@ class vEBTree {
             this->min = INT32_MAX;
             this->max = INT32_MIN;
             this->clusters = HashTable();
+            this->resumo = NULL;
         }
 
         int32_t insert(int32_t x);
-        long int findNext(int32_t x);
-        long int findPrevious(int32_t x);
+        long long int findNext(int32_t x);
+        long long int findPrevious(int32_t x);
+        int32_t remove(int32_t x);
         void print();
+        void initializeResumo(vEBTree* res);
 };
+
+void vEBTree::initializeResumo(vEBTree* res) {
+    this->resumo = res;
+    return;
+}
 
 int32_t vEBTree::insert(int32_t x) {
     if (this->min == x || this->max == x) {
@@ -256,22 +265,27 @@ int32_t vEBTree::insert(int32_t x) {
     int i = floor( ((float) x) / MSQRT );
     int lo = x % MSQRT;
 
-    if (this->clusters.findKey(i).second->pointer == NULL) {
-        // Criando um novo cluster caso esteja vazio
+    std::pair<int, Node*> ithEntry = this->clusters.findKey(i);
+
+    if (ithEntry.first == -1 || ithEntry.second->deleted || ithEntry.second->pointer == NULL) {
+        // Criando um novo cluster caso esteja vazio, não exista ou foi deletado
         //std::cout << "Cluster da posicao " << i << " esta vazio. Inicializando cluster... " << this->clusters.findKey(i).second->pointer << endl;
         vEBTree* cluster = new vEBTree();
-        this->clusters.findKey(i).second->initializePointer(cluster);
+        this->clusters.insertKey(i, cluster);
+        //ithEntry.second->initializePointer(cluster);
         //std::cout << "Cluster da posicao " << i << " agora esta inicializado na posicao " << cluster << " / " << this->clusters.findKey(i).second->pointer << endl << endl;
     }
 
     // Inserindo no cluster i
     vEBTree* ithCluster = this->clusters.findKey(i).second->pointer;
+    //ithEntry.second->setValue(i);
     ithCluster->insert(lo);
 
     if (ithCluster->min == ithCluster->max) {
         if (this->resumo == NULL) {
             // Inicializando a árvore resumo caso ela não exista
-            this->resumo = new vEBTree();
+            vEBTree* novoResumo = new vEBTree();
+            this->initializeResumo(novoResumo);
         }
         this->resumo->insert(i);
     }
@@ -279,7 +293,7 @@ int32_t vEBTree::insert(int32_t x) {
     return x;
 }
 
-long int vEBTree::findNext(int32_t x) {
+long long int vEBTree::findNext(int32_t x) {
     if (x < this->min) {
          return this->min;
     }
@@ -301,7 +315,7 @@ long int vEBTree::findNext(int32_t x) {
     return (MSQRT * j) + this->clusters.findKey(j).second->pointer->min;
 }
 
-long int vEBTree::findPrevious(int32_t x) {
+long long int vEBTree::findPrevious(int32_t x) {
     if (x > this->max) {
          return this->max;
     }
@@ -332,9 +346,71 @@ long int vEBTree::findPrevious(int32_t x) {
     }
 }
 
+int32_t vEBTree::remove(int32_t x) {
+    if (this->min == this->max && this->max == x) {
+        this->min = M;
+        this->max = INT32_MIN;
+        return x;
+    }
+
+    if (this->min == x) {
+        long int hi = this->resumo->min * MSQRT;
+        int32_t j = this->resumo->min;
+        std::pair<int, Node*> jthEntry = this->clusters.findKey(j);
+        if (jthEntry.first != -1) {
+            x = hi + jthEntry.second->pointer->min;
+            this->min = x;
+        } else {
+            std::cout << "Elemento nao encontrado (nao existe ou ja foi deletado)" << endl;
+            return -1;
+        }
+    }
+
+    int i = floor( ((float) x) / MSQRT );
+    int lo = x % MSQRT;
+
+    std::pair<int, Node*> ithEntry = this->clusters.findKey(i);
+
+    if (ithEntry.first != -1) {
+        vEBTree* ithCluster = ithEntry.second->pointer;
+        ithCluster->remove(lo);
+        ithCluster->clusters.deleteKey(lo);
+
+        if (ithCluster->clusters.filled == 0) {
+            // i-th cluster está vazio
+            this->resumo->remove(i);
+        }
+
+        if (this->max == x) {
+            if (this->resumo->clusters.filled == 0) {
+                // resumo está vazio
+                this->max = this->min;
+            } else {
+                long int hi = this->resumo->max * MSQRT;
+                int32_t j = this->resumo->max;
+                
+                std::pair<int, Node*> jthEntry = this->clusters.findKey(j);
+
+                if (jthEntry.first != -1) {
+                    this->max = hi + this->clusters.findKey(j).second->pointer->max;
+                } else {
+                    std::cout << "Elemento nao encontrado (nao existe ou ja foi deletado)" << endl;
+                    return -1;
+                }
+                
+            }
+        }
+
+        return x;
+    } else {
+        std::cout << "Elemento nao encontrado (nao existe ou ja foi deletado)" << endl;
+        return -1;
+    }
+}
+
 void vEBTree::print() {
     std::cout << this->min << ", ";
-    // Continuar o print
+    this->clusters.printTable();
 }
 
 int main() {
@@ -347,7 +423,7 @@ int main() {
 
     while (k != -1 && c != -1) {
 
-        std::cout << "MENU" << endl <<"1 - inserir" << endl << "2 - sucessor" << endl << "3 - predecessor" << endl;
+        std::cout << "MENU" << endl <<"1 - inserir" << endl << "2 - sucessor" << endl << "3 - predecessor" << endl << "4 - deletar" << endl;
         std::cin >> c;
 
         switch (c)
@@ -380,6 +456,16 @@ int main() {
                 int32_t res = tree.findPrevious(k);
                 std::cout << "Predecessor de " << k << " eh: " << res << endl << endl;
             }
+            break;
+        case 4:
+            {
+                std::cout << "Digite um valor para deletar da arvore: ";
+                std::cin >> k;
+                std::cout << endl;
+
+                tree.remove(k);
+            }
+            break;
         default:
             break;
         }
