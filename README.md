@@ -40,6 +40,8 @@ class HashTable {
 };
 ```
 
+A árvore van Emde Boas é inicializada com um universo de chaves de tamanho 2^32 = 4294967296. 
+
 ```c++
 class vEBTree {
     public:
@@ -58,6 +60,15 @@ class vEBTree {
         void print(std::ofstream& Output);
         void initializeResumo(vEBTree* res);
 };
+```
+
+Se um elemento não possui predecessor (respec. sucessor), o valor retornado como predecessor dele será INT32_MIN (respec. INT32_MAX). Exemplo no arquivo `saida.txt`:
+
+```
+PRE 1
+-2147483648
+SUC 6553678
+2147483647
 ```
 
 ### Instruções
