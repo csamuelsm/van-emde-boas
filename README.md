@@ -7,21 +7,24 @@ Segue abaixo a especificação das funções e estruturas. Iremos utilizar uma *
 ```c++
 class Node {
     public:
-        int key;
+        int32_t key;
         unsigned short deleted : 1;
+        vEBTree* pointer;
 
         Node();
-        int setValue(int k);
-        void deleteNode(); // Vamos utilizar um lazy-delete, apenas setando o valor `deleted` para true
+
+        int32_t setValue(int32_t k);
+        void initializePointer(vEBTree* tree);
+        void deleteNode();
 };
 ```
 
 ```c++
 class HashTable {
     public:
-        int size;
+        int32_t size;
         std::vector<Node> table;
-        int filled; // Vamos armazenar quantos elementos do vetor estão preenchidos, a fim de mantermos a tabela sempre com tamanho m >= 2n, onde n é a qtde de chaves
+        int32_t filled; // Vamos armazenar quantos elementos do vetor estão preenchidos, a fim de mantermos a tabela sempre com tamanho m >= 2n, onde n é a qtde de chaves
 
         float a1, a2, a3, a4, a5; // Coeficientes aleatórios do polinômio de grau 4 para a função de hash 5-independente
 
@@ -29,10 +32,52 @@ class HashTable {
 
         void tableDoubling();
         void tableHalving();
-        int insertKey(int k);
-        int findKey(int k);
-        int deleteKey(int k);
-        int hash(int k);
+        int32_t insertKey(int32_t k, vEBTree* tree);
+        std::pair<int, Node*> findKey(int32_t k);
+        int32_t deleteKey(int32_t k);
+        int hash(int32_t k);
         void printTable();
 };
 ```
+
+```c++
+class vEBTree {
+    public:
+        long long int min;
+        long long int max;
+
+        HashTable clusters;
+        vEBTree* resumo;
+
+        vEBTree();
+
+        int32_t insert(int32_t x);
+        long long int findNext(int32_t x);
+        long long int findPrevious(int32_t x);
+        int32_t remove(int32_t x);
+        void print(std::ofstream& Output);
+        void initializeResumo(vEBTree* res);
+};
+```
+
+### Instruções
+
+Para executar, compile o arquivo main.cpp:
+
+```
+g++ main.cpp
+```
+
+Se desejar, pode adicionar a tag `-o` seguida de um nome para o arquivo compilado. Por exemplo:
+
+```
+g++ main.cpp -o vebtree.out
+```
+
+Caso um nome para o arquivo compilado não seja especificado, será criado um arquivo chamado `a.out` (ou `a.exe` no caso do Windows). Execute o arquivo passando como parâmetro o caminho para o arquivo com as operações:
+
+```
+./a.out ./entrada2.txt
+```
+
+Um arquivo chamado `saida.txt` será gerado com as impressões e resultados das operações de sucessor, predecessor e imprimir especificadas no arquivo de entrada.
